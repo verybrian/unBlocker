@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "nation-2020.ts-491108-566.js",
+      "resourceTypes": ["script"]
+    }
+  }
+]
