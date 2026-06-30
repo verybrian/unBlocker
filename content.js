@@ -1,12 +1,5 @@
-(function injectEarlyStyles() {
-  const style = document.createElement("style");
-  style.id = "content-blocker-early";
-  style.textContent = `
-    div.nmgp.content-page-ad_wrap { display: none !important; }
-    #paywall { display: none !important; }
-  `;
-  document.documentElement.appendChild(style);
-})();
+const DEV = false;
+const log = (...args) => DEV && console.log('[UB]', ...args);
 
 const CLASS_REMOVALS = [
   { target: "#container-1", classes: ["hidden"] },
@@ -39,14 +32,12 @@ function fixImageUrls(container, baseUrl) {
       const val = img.getAttribute(attr);
       if (val && val.startsWith("/")) img.setAttribute(attr, origin + val);
     });
-    // Force lazy-loaded images to load by setting src from data-src
     const dataSrc = img.getAttribute("data-src") || img.getAttribute("data-lazy-src");
     if (dataSrc && !img.getAttribute("src")) img.src = dataSrc;
   });
 }
 
 function hidePaywallChrome() {
-  // Hide the paywall loader spinner and wall guard
   [".spinner", "#article-general-spinner", ".wall-guard", "[class*='wall-guard']"]
     .forEach(sel => {
       document.querySelectorAll(sel).forEach(el => el.style.display = "none");
@@ -56,14 +47,14 @@ function hidePaywallChrome() {
 function fetchAndInject(url) {
   chrome.runtime.sendMessage({ action: "fetchArticle", url }, (response) => {
     if (!response?.ok || !response.html) {
-      console.log("[UB] Fetch failed:", response?.error);
+      log("Fetch failed:", response?.error);
       return;
     }
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(response.html, "text/html");
     const paragraphs = doc.querySelectorAll(".text-block.blk-txt .paragraph-wrapper");
-    console.log(`[UB] Parsed ${paragraphs.length} paragraphs.`);
+    log(`Parsed ${paragraphs.length} paragraphs.`);
 
     if (!paragraphs.length) return;
 
@@ -77,34 +68,36 @@ function fetchAndInject(url) {
         });
         fixImageUrls(container, url);
         hidePaywallChrome();
-        console.log("[UB] Injected.");
+        log("Injected.");
       }, 1500);
     });
   });
 }
 
 function injectBlockingStyles() {
-  if (document.getElementById("content-blocker-styles")) return;
+  if (document.getElementById("ub-styles")) return;
 
   const style = document.createElement("style");
-  style.id = "content-blocker-styles";
-  style.textContent = "";
+  style.id = "ub-styles";
+  style.textContent = `
+    div.nmgp.content-page-ad_wrap { display: none !important; }
+    #paywall { display: none !important; }
+  `;
   document.head?.appendChild(style);
 
   const observer = new MutationObserver(() => applyClassRemovals());
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.__contentBlockerObserver = observer;
+  window.__ubObserver = observer;
 
   fetchAndInject(window.location.href);
-  console.log("[UB] Active.");
+  log("Active.");
 }
 
 function removeBlockingStyles() {
-  document.getElementById("content-blocker-styles")?.remove();
-  document.getElementById("content-blocker-early")?.remove();
-  window.__contentBlockerObserver?.disconnect();
-  window.__contentBlockerObserver = null;
-  console.log("[UB] Disabled.");
+  document.getElementById("ub-styles")?.remove();
+  window.__ubObserver?.disconnect();
+  window.__ubObserver = null;
+  log("Disabled.");
 }
 
 const currentHost = window.location.hostname;
