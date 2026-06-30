@@ -27,13 +27,25 @@ function waitForContainer(callback) {
 
 function fixImageUrls(container, baseUrl) {
   const origin = new URL(baseUrl).origin;
-  container.querySelectorAll("img").forEach(img => {
-    ["src", "data-src", "data-lazy-src"].forEach(attr => {
-      const val = img.getAttribute(attr);
-      if (val && val.startsWith("/")) img.setAttribute(attr, origin + val);
-    });
-    const dataSrc = img.getAttribute("data-src") || img.getAttribute("data-lazy-src");
-    if (dataSrc && !img.getAttribute("src")) img.src = dataSrc;
+  container.querySelectorAll("img[data-lazy-img]").forEach(img => {
+    const src = img.getAttribute("data-src");
+    const srcset = img.getAttribute("data-srcset");
+
+    if (src) img.src = src;
+    if (srcset) {
+      img.srcset = srcset.split(",").map(entry => {
+        const [url, width] = entry.trim().split(/\s+/);
+        const fixedUrl = url.startsWith("/") ? origin + url : url;
+        return width ? `${fixedUrl} ${width}` : fixedUrl;
+      }).join(", ");
+    }
+
+    img.removeAttribute("data-lazy-img");
+    img.removeAttribute("loading");
+
+    img.style.opacity = "1";
+    const lazyContainer = img.closest(".lazy-img-container");
+    if (lazyContainer) lazyContainer.style.opacity = "1";
   });
 }
 
