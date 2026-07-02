@@ -13,6 +13,18 @@ window.UBSite = {
   onMutation() { },
 
   _injectArticleBody() {
+    function decodeEntities(str) {
+      let decoded = str;
+      let previous;
+      do {
+        previous = decoded;
+        const txt = document.createElement("textarea");
+        txt.innerHTML = previous;
+        decoded = txt.value;
+      } while (decoded !== previous);
+      return decoded;
+    }
+
     const attempt = () => {
       const spwWrap = document.querySelector('.spw-wrap');
       const blocks = document.querySelectorAll('script[type="application/ld+json"]');
@@ -40,7 +52,7 @@ window.UBSite = {
 
       paragraphs.forEach(text => {
         const p = document.createElement("p");
-        p.textContent = text;
+        p.textContent = decodeEntities(text);
         p.style.marginBottom = "1rem";
         wrapper.appendChild(p);
       });
