@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "unBlocker",
   "version": "1.0",
-  "description": "Removes distractions from news websites so you can read efficiently.",
+  "description": "Removes distractions from news websites so you can read without distractions",
 
   "permissions": [
     "storage",
@@ -35,8 +35,13 @@
 
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": ["*://*.nation.africa/*"],
+      "js": ["sites/nation.js", "content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.standardmedia.co.ke/*"],
+      "js": ["sites/standard.js", "content.js"],
       "run_at": "document_start"
     }
   ],
