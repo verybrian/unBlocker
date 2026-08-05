@@ -3,17 +3,119 @@ window.UBSite = {
   styles: `
     div.nmgp.content-page-ad_wrap { display: none !important; }
     #paywall { display: none !important; }
+    #layout[data-tracking-area="layout"] { display: none !important; }
   `,
 
   enable() {
     this._showArticleTab();
     this._fetchAndInject(window.location.href);
+    chrome.storage.local.get(['filters'], (result) => {
+      if (result.filters) {
+        this.applyFilters(result.filters);
+      }
+    });
   },
 
-  disable() {},
+  disable() {
+    const commentsSection = document.querySelector('#layout[data-tracking-area="layout"]');
+    if (commentsSection) {
+      commentsSection.style.display = '';
+    }
+  },
 
   onMutation() {
     this._showArticleTab();
+    chrome.storage.local.get(['filters'], (result) => {
+      if (result.filters) {
+        this.applyFilters(result.filters);
+      }
+    });
+  },
+
+  applyFilters(filters) {
+    if (filters.comments) {
+      this._hideComments();
+    } else {
+      this._showComments();
+    }
+    
+    if (filters.ads) {
+      this._hideAds();
+    }
+    
+    if (filters.paywall) {
+      this._hidePaywall();
+    }
+  },
+
+  _hideComments() {
+    const selectors = [
+      '#layout[data-tracking-area="layout"]',
+      '#thread__container',
+      '#conversation',
+      '#posts',
+      '#reactions__container',
+      '#ratings__container',
+      '#main-nav',
+      '#footer.disqus-footer__wrapper'
+    ];
+    
+    selectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => {
+        el.style.display = 'none';
+      });
+    });
+    
+    const disqusThread = document.querySelector('#disqus_thread');
+    if (disqusThread) {
+      disqusThread.style.display = 'none';
+    }
+  },
+
+  _showComments() {
+    const selectors = [
+      '#layout[data-tracking-area="layout"]',
+      '#thread__container',
+      '#conversation',
+      '#posts',
+      '#reactions__container',
+      '#ratings__container',
+      '#main-nav',
+      '#footer.disqus-footer__wrapper'
+    ];
+    
+    selectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => {
+        el.style.display = '';
+      });
+    });
+    
+    const disqusThread = document.querySelector('#disqus_thread');
+    if (disqusThread) {
+      disqusThread.style.display = '';
+    }
+  },
+
+  _hideAds() {
+    const adSelectors = [
+      'div.nmgp.content-page-ad_wrap',
+      '[data-role="ad-wrapper"]',
+      '.content-page-ad'
+    ];
+    
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        el.style.display = 'none';
+      });
+    });
+  },
+
+  _hidePaywall() {
+    document.querySelectorAll('#paywall').forEach(el => {
+      el.style.display = 'none';
+    });
   },
 
   _showArticleTab() {
@@ -135,3 +237,15 @@ window.UBSite = {
     });
   }
 };
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'enable') {
+    window.UBSite.enable();
+  } else if (request.action === 'disable') {
+    window.UBSite.disable();
+  } else if (request.action === 'updateFilters') {
+    window.UBSite.applyFilters(request.filters);
+  }
+  
+  sendResponse({ success: true });
+});
