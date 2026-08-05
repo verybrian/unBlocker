@@ -1,16 +1,87 @@
 window.UBSite = {
 
-  styles: `.spw-wrap { display: none !important; }`,
+  styles: `
+    .spw-wrap { display: none !important; }
+    #tbl-explore-more-container { display: none !important; }
+    body.tbl-show-explore-more.tbl-explore-more-has-overlay::before {
+      display: none !important;
+    }
+    body.tbl-show-explore-more {
+      overflow: auto !important;
+      position: static !important;
+      pointer-events: auto !important;
+    }
+    body.tbl-show-explore-more.tbl-explore-more-has-overlay {
+      overflow: auto !important;
+      position: static !important;
+      pointer-events: auto !important;
+    }
+  `,
 
   enable() {
     this._injectArticleBody();
+    chrome.storage.local.get(['filters'], (result) => {
+      if (result.filters) {
+        this.applyFilters(result.filters);
+      }
+    });
   },
 
   disable() {
     document.getElementById("ub-standard-content")?.remove();
+    const exploreMore = document.querySelector('#tbl-explore-more-container');
+    if (exploreMore) {
+      exploreMore.style.display = '';
+    }
+    document.body.classList.remove('tbl-show-explore-more', 'tbl-explore-more-has-overlay');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.pointerEvents = '';
   },
 
-  onMutation() { },
+  onMutation() {
+    chrome.storage.local.get(['filters'], (result) => {
+      if (result.filters) {
+        this.applyFilters(result.filters);
+      }
+    });
+  },
+
+  applyFilters(filters) {
+    if (filters.ads) {
+      this._hideAds();
+      this._removeBodyLock();
+    }
+    
+    if (filters.comments) {
+      this._hideComments();
+    }
+  },
+
+  _hideAds() {
+    const selectors = [
+      '#tbl-explore-more-container',
+      '[id*="tbl-explore-more"]',
+      '.tbl-explore-more-overlay',
+      '[role="dialog"][aria-label*="Keep on reading"]',
+      '[aria-labelledby="tbl-explore-more-title"]'
+    ];
+    
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        el.style.display = 'none';
+      });
+    });
+  },
+
+  _removeBodyLock() {
+    document.body.classList.remove('tbl-show-explore-more', 'tbl-explore-more-has-overlay');
+    document.body.style.overflow = 'auto';
+    document.body.style.position = 'static';
+    document.body.style.pointerEvents = 'auto';
+  },
+
+  _hideComments() {},
 
   _injectArticleBody() {
     function decodeEntities(str) {
@@ -42,7 +113,7 @@ window.UBSite = {
         if (match) { articleBody = match[1]; break; }
       }
 
-      if (!articleBody) { log("Standard: articleBody not found."); return; }
+      if (!articleBody) return;
 
       const paragraphs = articleBody.split(/\n+/).map(s => s.trim()).filter(Boolean);
 
@@ -58,9 +129,20 @@ window.UBSite = {
       });
 
       spwWrap.parentElement.insertBefore(wrapper, spwWrap);
-      log("Standard: injected.");
     };
 
     attempt();
   }
 };
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'enable') {
+    window.UBSite.enable();
+  } else if (request.action === 'disable') {
+    window.UBSite.disable();
+  } else if (request.action === 'updateFilters') {
+    window.UBSite.applyFilters(request.filters);
+  }
+  
+  sendResponse({ success: true });
+});
