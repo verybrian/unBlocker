@@ -6,36 +6,44 @@ window.UBSite = {
   `,
 
   enable() {
-    this._applyClassRemovals();
+    this._showArticleTab();
     this._fetchAndInject(window.location.href);
   },
 
   disable() {},
 
   onMutation() {
-    this._applyClassRemovals();
+    this._showArticleTab();
   },
 
-  _classRemovals: [
-    { target: "#container-1", classes: ["hidden"] },
-    { target: "#container-2", classes: ["hidden"] }
-  ],
-
-  _applyClassRemovals() {
-    this._classRemovals.forEach(({ target, classes }) => {
-      const el = document.querySelector(target);
-      if (!el) return;
-      el.classList.remove(...classes);
-    });
+  _showArticleTab() {
+    const articleTab = document.querySelector('#story');
+    const relatedTab = document.querySelector('#related');
+    const container1 = document.querySelector('#container-1');
+    const container2 = document.querySelector('#container-2');
+    
+    if (articleTab && container1 && container2) {
+      articleTab.classList.add('active-tab');
+      relatedTab.classList.remove('active-tab');
+      
+      container1.classList.remove('hidden');
+      container2.classList.add('hidden');
+    }
   },
 
   _waitForContainer(callback) {
-    const existing = document.querySelector("#container-2 .text-block.blk-txt");
-    if (existing) { callback(existing); return; }
+    const existing = document.querySelector("#container-1 .text-block.blk-txt");
+    if (existing) {
+      callback(existing);
+      return;
+    }
 
     const observer = new MutationObserver(() => {
-      const el = document.querySelector("#container-2 .text-block.blk-txt");
-      if (el) { observer.disconnect(); callback(el); }
+      const el = document.querySelector("#container-1 .text-block.blk-txt");
+      if (el) {
+        observer.disconnect();
+        callback(el);
+      }
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   },
@@ -62,34 +70,68 @@ window.UBSite = {
     });
   },
 
-  _hidePaywallChrome() {
-    [".spinner", "#article-general-spinner", ".wall-guard", "[class*='wall-guard']"]
-      .forEach(sel => document.querySelectorAll(sel)
-      .forEach(el => el.style.display = "none"));
+  _hidePaywallElements() {
+    const selectors = [
+      ".premium-content", 
+      ".paywall-overlay", 
+      ".wall-guard", 
+      "[class*='wall-guard']",
+      ".articles-left-notifier",
+      ".promotion-banner"
+    ];
+    
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.display = "none";
+      });
+    });
   },
 
   _fetchAndInject(url) {
     chrome.runtime.sendMessage({ action: "fetchArticle", url }, (response) => {
-      if (!response?.ok || !response.html) return;
+      if (!response?.ok || !response.html) {
+        return;
+      }
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(response.html, "text/html");
-      const paragraphs = doc.querySelectorAll("#container-2 .text-block.blk-txt .paragraph-wrapper");
+      const paragraphs = doc.querySelectorAll("#container-1 .text-block.blk-txt .paragraph-wrapper");
+      
+      if (!paragraphs.length) {
+        const altParagraphs = doc.querySelectorAll("#container-1 .paragraph-wrapper, #container-1 p");
+        if (!altParagraphs.length) {
+          return;
+        }
+        
+        this._injectContent(altParagraphs, url);
+        return;
+      }
 
-      if (!paragraphs.length) return;
+      this._injectContent(paragraphs, url);
+    });
+  },
 
-      this._waitForContainer((container) => {
-        setTimeout(() => {
-          container.innerHTML = "";
-          paragraphs.forEach(p => {
-            const clone = p.cloneNode(true);
-            clone.classList.remove("nmgp");
-            container.appendChild(clone);
-          });
-          this._fixImageUrls(container, url);
-          this._hidePaywallChrome();
-        }, 1500);
+  _injectContent(paragraphs, url) {
+    this._waitForContainer((textBlock) => {
+      textBlock.innerHTML = "";
+      
+      let injectedCount = 0;
+      paragraphs.forEach(p => {
+        const clone = p.cloneNode(true);
+        
+        if (clone.classList.contains('content-page-ad_wrap') || 
+            clone.classList.contains('nmgp') && clone.querySelector('.content-page-ad')) {
+          return;
+        }
+        
+        clone.classList.remove("nmgp");
+        textBlock.appendChild(clone);
+        injectedCount++;
       });
+      
+      this._fixImageUrls(textBlock.closest('#container-1'), url);
+      this._hidePaywallElements();
+      this._showArticleTab();
     });
   }
 };
