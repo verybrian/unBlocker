@@ -119,29 +119,47 @@ window.UBSite = {
   },
 
   _showArticleTab() {
-    const articleTab = document.querySelector('#story');
-    const relatedTab = document.querySelector('#related');
-    const container1 = document.querySelector('#container-1');
-    const container2 = document.querySelector('#container-2');
+    const tabs = document.querySelectorAll('.tab-toggle-button');
+    const containers = document.querySelectorAll('[data="tab-container"]');
     
-    if (articleTab && container1 && container2) {
-      articleTab.classList.add('active-tab');
-      relatedTab.classList.remove('active-tab');
-      
-      container1.classList.remove('hidden');
-      container2.classList.add('hidden');
-    }
+    if (!tabs.length || !containers.length) return;
+    
+    const articleTab = document.querySelector('#story') || 
+                       Array.from(tabs).find(tab => 
+                         tab.textContent.trim().toLowerCase() === 'article'
+                       );
+    
+    if (!articleTab) return;
+    
+    const targetId = articleTab.querySelector('a')?.getAttribute('data-target') || 
+                     articleTab.getAttribute('data-target');
+    
+    tabs.forEach(tab => tab.classList.remove('active-tab'));
+    articleTab.classList.add('active-tab');
+    
+    containers.forEach(container => {
+      if (container.id === targetId) {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    });
   },
 
   _waitForContainer(callback) {
-    const existing = document.querySelector("#container-1 .text-block.blk-txt");
-    if (existing) {
-      callback(existing);
+    const textBlock = document.querySelector("#container-1 .text-block.blk-txt") ||
+                      document.querySelector("#container-2 .text-block.blk-txt") ||
+                      document.querySelector(".text-block.blk-txt");
+    
+    if (textBlock) {
+      callback(textBlock);
       return;
     }
 
     const observer = new MutationObserver(() => {
-      const el = document.querySelector("#container-1 .text-block.blk-txt");
+      const el = document.querySelector("#container-1 .text-block.blk-txt") ||
+                 document.querySelector("#container-2 .text-block.blk-txt") ||
+                 document.querySelector(".text-block.blk-txt");
       if (el) {
         observer.disconnect();
         callback(el);
@@ -197,10 +215,19 @@ window.UBSite = {
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(response.html, "text/html");
-      const paragraphs = doc.querySelectorAll("#container-1 .text-block.blk-txt .paragraph-wrapper");
+      
+      let paragraphs = doc.querySelectorAll("#container-1 .text-block.blk-txt .paragraph-wrapper");
       
       if (!paragraphs.length) {
-        const altParagraphs = doc.querySelectorAll("#container-1 .paragraph-wrapper, #container-1 p");
+        paragraphs = doc.querySelectorAll("#container-2 .text-block.blk-txt .paragraph-wrapper");
+      }
+      
+      if (!paragraphs.length) {
+        paragraphs = doc.querySelectorAll(".text-block.blk-txt .paragraph-wrapper");
+      }
+      
+      if (!paragraphs.length) {
+        const altParagraphs = doc.querySelectorAll(".paragraph-wrapper, .text-block.blk-txt p");
         if (!altParagraphs.length) {
           return;
         }
@@ -217,7 +244,6 @@ window.UBSite = {
     this._waitForContainer((textBlock) => {
       textBlock.innerHTML = "";
       
-      let injectedCount = 0;
       paragraphs.forEach(p => {
         const clone = p.cloneNode(true);
         
@@ -228,10 +254,9 @@ window.UBSite = {
         
         clone.classList.remove("nmgp");
         textBlock.appendChild(clone);
-        injectedCount++;
       });
       
-      this._fixImageUrls(textBlock.closest('#container-1'), url);
+      this._fixImageUrls(textBlock, url);
       this._hidePaywallElements();
       this._showArticleTab();
     });
