@@ -40,6 +40,11 @@
       "run_at": "document_start"
     },
     {
+      "matches": ["*://*.businessdailyafrica.com/*"],
+      "js": ["sites/bd.js", "content.js"],
+      "run_at": "document_start"
+    },
+    {
       "matches": ["*://*.standardmedia.co.ke/*"],
       "js": ["sites/standard.js", "content.js"],
       "run_at": "document_start"
