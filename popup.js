@@ -6,7 +6,7 @@ const footerHost = document.getElementById('footer-host');
 
 let currentHost = '';
 let blockedSites = [];
-let filters = { ads: true, paywall: true, comments: true, cookies: false, newsletters: false };
+let filters = { ads: true, paywall: true, comments: true, cookies: false, newsletters: true };
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const url = new URL(tabs[0].url);

@@ -20,6 +20,10 @@ window.UBSite = {
     if (paywall) {
       paywall.style.display = '';
     }
+    const newsletter = document.querySelector('#newsletter_signup');
+    if (newsletter) {
+      newsletter.style.display = '';
+    }
   },
 
   onMutation() {
@@ -43,6 +47,26 @@ window.UBSite = {
     
     if (filters.paywall) {
       this._hidePaywall();
+    }
+    
+    if (filters.newsletters) {
+      this._hideNewsletters();
+    } else {
+      this._showNewsletters();
+    }
+  },
+
+  _hideNewsletters() {
+    const el = document.querySelector('#newsletter_signup');
+    if (el) {
+      el.style.display = 'none';
+    }
+  },
+
+  _showNewsletters() {
+    const el = document.querySelector('#newsletter_signup');
+    if (el) {
+      el.style.display = '';
     }
   },
 
@@ -205,6 +229,7 @@ window.UBSite = {
         
         if (clone.classList.contains('content-page-ad_wrap') || 
             clone.classList.contains('article-content-related') ||
+            clone.id === 'newsletter_signup' ||
             clone.classList.contains('nmgp') && clone.querySelector('.content-page-ad')) {
           return;
         }
